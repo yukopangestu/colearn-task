@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect 4</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .game-container {
+            text-align: center;
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .score-board {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: #f0f0f0;
+            border-radius: 10px;
+        }
+
+        .score {
+            text-align: center;
+        }
+
+        .score h3 {
+            color: #667eea;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .score-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        #status {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #333;
+            min-height: 2rem;
+            font-weight: 600;
+        }
+
+        .board {
+            display: inline-block;
+            background: #0066cc;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            margin-bottom: 1.5rem;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .row:last-child {
+            margin-bottom: 0;
+        }
+
+        .cell {
+            width: 60px;
+            height: 60px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+        }
+
+        .cell:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .cell.red {
+            background: #ff4444;
+        }
+
+        .cell.yellow {
+            background: #ffdd44;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        button {
+            padding: 0.8rem 2rem;
+            font-size: 1rem;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        #reset {
+            background: #667eea;
+            color: white;
+        }
+
+        #reset:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        #back {
+            background: #764ba2;
+            color: white;
+        }
+
+        #back:hover {
+            background: #653a8b;
+            transform: translateY(-2px);
+        }
+
+        #clear-scores {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        #clear-scores:hover {
+            background: #ee5a52;
+            transform: translateY(-2px);
+        }
+
+        .mode-selector {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: #f0f0f0;
+            border-radius: 10px;
+        }
+
+        .mode-selector h3 {
+            color: #667eea;
+            margin-bottom: 0.8rem;
+            font-size: 1rem;
+        }
+
+        .mode-buttons {
+            display: flex;
+            gap: 0.8rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .mode-btn {
+            padding: 0.6rem 1.2rem;
+            font-size: 0.9rem;
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .mode-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .mode-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 768px) {
+            .cell {
+                width: 45px;
+                height: 45px;
+            }
+
+            .row {
+                gap: 8px;
+                margin-bottom: 8px;
+            }
+
+            .board {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Connect 4</h1>
+        
+        <div class="mode-selector">
+            <h3>Select Game Mode</h3>
+            <div class="mode-buttons">
+                <button class="mode-btn active" id="mode-pvp">Player vs Player</button>
+                <button class="mode-btn" id="mode-ai">Player vs AI</button>
+            </div>
+        </div>
+
+        <div class="score-board">
+            <div class="score">
+                <h3 id="red-label">Red Player</h3>
+                <div class="score-value" id="red-score">0</div>
+            </div>
+            <div class="score">
+                <h3>Draws</h3>
+                <div class="score-value" id="draws-score">0</div>
+            </div>
+            <div class="score">
+                <h3 id="yellow-label">Yellow Player</h3>
+                <div class="score-value" id="yellow-score">0</div>
+            </div>
+        </div>
+
+        <div id="status">Red Player's Turn</div>
+        <div class="board" id="board"></div>
+        <div class="buttons">
+            <button id="reset">New Game</button>
+            <button id="clear-scores">Clear Scores</button>
+            <button id="back">Back to Menu</button>
+        </div>
+    </div>
+
+    <script>
+        const ROWS = 6;
+        const COLS = 7;
+        let currentPlayer = 'red';
+        let board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
+        let gameActive = true;
+        let aiMode = false;
+
+        // Load scores from localStorage
+        let scores = JSON.parse(localStorage.getItem('connect4_scores')) || {
+            red: 0,
+            yellow: 0,
+            draws: 0
+        };
+
+        const boardElement = document.getElementById('board');
+        const status = document.getElementById('status');
+        const modePvpBtn = document.getElementById('mode-pvp');
+        const modeAiBtn = document.getElementById('mode-ai');
+
+        function updateScoreDisplay() {
+            document.getElementById('red-score').textContent = scores.red;
+            document.getElementById('yellow-score').textContent = scores.yellow;
+            document.getElementById('draws-score').textContent = scores.draws;
+        }
+
+        function saveScores() {
+            localStorage.setItem('connect4_scores', JSON.stringify(scores));
+        }
+
+        function setMode(isAiMode) {
+            aiMode = isAiMode;
+            if (aiMode) {
+                modePvpBtn.classList.remove('active');
+                modeAiBtn.classList.add('active');
+                document.getElementById('yellow-label').textContent = 'AI';
+            } else {
+                modeAiBtn.classList.remove('active');
+                modePvpBtn.classList.add('active');
+                document.getElementById('yellow-label').textContent = 'Yellow Player';
+            }
+            resetGame();
+        }
+
+        function createBoard() {
+            boardElement.innerHTML = '';
+            for (let row = 0; row < ROWS; row++) {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'row';
+                
+                for (let col = 0; col < COLS; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.addEventListener('click', () => handleCellClick(col));
+                    rowDiv.appendChild(cell);
+                }
+                
+                boardElement.appendChild(rowDiv);
+            }
+        }
+
+        // AI Logic - Intelligent move selection
+        function getLowestEmptyRow(col) {
+            for (let r = ROWS - 1; r >= 0; r--) {
+                if (board[r][col] === null) {
+                    return r;
+                }
+            }
+            return -1;
+        }
+
+        function scorePosition(player) {
+            let score = 0;
+
+            // Score center column (most valuable)
+            const centerCol = Math.floor(COLS / 2);
+            let centerCount = 0;
+            for (let r = 0; r < ROWS; r++) {
+                if (board[r][centerCol] === player) centerCount++;
+            }
+            score += centerCount * 3;
+
+            // Score horizontal
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS - 3; c++) {
+                    const window = [board[r][c], board[r][c+1], board[r][c+2], board[r][c+3]];
+                    score += evaluateWindow(window, player);
+                }
+            }
+
+            // Score vertical
+            for (let c = 0; c < COLS; c++) {
+                for (let r = 0; r < ROWS - 3; r++) {
+                    const window = [board[r][c], board[r+1][c], board[r+2][c], board[r+3][c]];
+                    score += evaluateWindow(window, player);
+                }
+            }
+
+            // Score diagonal (positive slope)
+            for (let r = 0; r < ROWS - 3; r++) {
+                for (let c = 0; c < COLS - 3; c++) {
+                    const window = [board[r][c], board[r+1][c+1], board[r+2][c+2], board[r+3][c+3]];
+                    score += evaluateWindow(window, player);
+                }
+            }
+
+            // Score diagonal (negative slope)
+            for (let r = 3; r < ROWS; r++) {
+                for (let c = 0; c < COLS - 3; c++) {
+                    const window = [board[r][c], board[r-1][c+1], board[r-2][c+2], board[r-3][c+3]];
+                    score += evaluateWindow(window, player);
+                }
+            }
+
+            return score;
+        }
+
+        function evaluateWindow(window, player) {
+            let score = 0;
+            const opponent = player === 'yellow' ? 'red' : 'yellow';
+
+            const playerCount = window.filter(x => x === player).length;
+            const emptyCount = window.filter(x => x === null).length;
+            const opponentCount = window.filter(x => x === opponent).length;
+
+            if (playerCount === 4) {
+                score += 100;
+            } else if (playerCount === 3 && emptyCount === 1) {
+                score += 5;
+            } else if (playerCount === 2 && emptyCount === 2) {
+                score += 2;
+            }
+
+            if (opponentCount === 3 && emptyCount === 1) {
+                score -= 4;
+            }
+
+            return score;
+        }
+
+        function getAiMove() {
+            // Check if AI can win
+            for (let col = 0; col < COLS; col++) {
+                const row = getLowestEmptyRow(col);
+                if (row !== -1) {
+                    board[row][col] = 'yellow';
+                    if (checkWin(row, col)) {
+                        board[row][col] = null;
+                        return col;
+                    }
+                    board[row][col] = null;
+                }
+            }
+
+            // Check if need to block player
+            for (let col = 0; col < COLS; col++) {
+                const row = getLowestEmptyRow(col);
+                if (row !== -1) {
+                    board[row][col] = 'red';
+                    if (checkWin(row, col)) {
+                        board[row][col] = null;
+                        return col;
+                    }
+                    board[row][col] = null;
+                }
+            }
+
+            // Score all valid moves
+            let validCols = [];
+            for (let col = 0; col < COLS; col++) {
+                if (getLowestEmptyRow(col) !== -1) {
+                    validCols.push(col);
+                }
+            }
+
+            // Evaluate each valid move
+            let bestScore = -Infinity;
+            let bestCol = validCols[Math.floor(Math.random() * validCols.length)];
+
+            for (let col of validCols) {
+                const row = getLowestEmptyRow(col);
+                board[row][col] = 'yellow';
+                const score = scorePosition('yellow');
+                board[row][col] = null;
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestCol = col;
+                }
+            }
+
+            return bestCol;
+        }
+
+        function makeAiMove() {
+            if (!gameActive || currentPlayer !== 'yellow' || !aiMode) return;
+
+            setTimeout(() => {
+                const col = getAiMove();
+                if (col !== undefined) {
+                    placePiece(col);
+                }
+            }, 600);
+        }
+
+        function placePiece(col) {
+            const row = getLowestEmptyRow(col);
+            if (row === -1) return false;
+
+            board[row][col] = currentPlayer;
+            const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            cell.classList.add(currentPlayer);
+
+            // Check for win
+            if (checkWin(row, col)) {
+                if (aiMode) {
+                    status.textContent = currentPlayer === 'red' ? 'You Win! 🎉' : 'AI Wins! 🤖';
+                } else {
+                    status.textContent = `${currentPlayer === 'red' ? 'Red' : 'Yellow'} Player Wins! 🎉`;
+                }
+                gameActive = false;
+                
+                scores[currentPlayer]++;
+                saveScores();
+                updateScoreDisplay();
+                return true;
+            }
+
+            // Check for draw
+            if (board.every(row => row.every(cell => cell !== null))) {
+                status.textContent = "It's a Draw! 🤝";
+                gameActive = false;
+                scores.draws++;
+                saveScores();
+                updateScoreDisplay();
+                return true;
+            }
+
+            // Switch player
+            currentPlayer = currentPlayer === 'red' ? 'yellow' : 'red';
+            if (aiMode) {
+                status.textContent = currentPlayer === 'red' ? 'Your Turn' : 'AI is thinking...';
+            } else {
+                status.textContent = `${currentPlayer === 'red' ? 'Red' : 'Yellow'} Player's Turn`;
+            }
+
+            return true;
+        }
+
+        function handleCellClick(col) {
+            if (!gameActive) return;
+
+            // In AI mode, only allow red player moves
+            if (aiMode && currentPlayer === 'yellow') return;
+
+            if (placePiece(col)) {
+                // Trigger AI move if it's AI's turn
+                if (aiMode && gameActive && currentPlayer === 'yellow') {
+                    makeAiMove();
+                }
+            }
+        }
+
+        function checkWin(row, col) {
+            return (
+                checkDirection(row, col, 0, 1) ||  // Horizontal
+                checkDirection(row, col, 1, 0) ||  // Vertical
+                checkDirection(row, col, 1, 1) ||  // Diagonal /
+                checkDirection(row, col, 1, -1)    // Diagonal \
+            );
+        }
+
+        function checkDirection(row, col, deltaRow, deltaCol) {
+            let count = 1;
+            const color = board[row][col];
+
+            // Check positive direction
+            let r = row + deltaRow;
+            let c = col + deltaCol;
+            while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === color) {
+                count++;
+                r += deltaRow;
+                c += deltaCol;
+            }
+
+            // Check negative direction
+            r = row - deltaRow;
+            c = col - deltaCol;
+            while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === color) {
+                count++;
+                r -= deltaRow;
+                c -= deltaCol;
+            }
+
+            return count >= 4;
+        }
+
+        function resetGame() {
+            board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
+            currentPlayer = 'red';
+            gameActive = true;
+            
+            if (aiMode) {
+                status.textContent = 'Your Turn';
+            } else {
+                status.textContent = 'Red Player\'s Turn';
+            }
+            
+            createBoard();
+        }
+
+        function clearScores() {
+            scores = { red: 0, yellow: 0, draws: 0 };
+            saveScores();
+            updateScoreDisplay();
+        }
+
+        document.getElementById('reset').addEventListener('click', resetGame);
+        document.getElementById('clear-scores').addEventListener('click', clearScores);
+        document.getElementById('back').addEventListener('click', () => window.location.href = 'index.html');
+        modePvpBtn.addEventListener('click', () => setMode(false));
+        modeAiBtn.addEventListener('click', () => setMode(true));
+
+        // Initialize
+        updateScoreDisplay();
+        createBoard();
+    </script>
+</body>
+</html>
