@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Selection</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">Choose Your Game</h1>
+        <div class="game-options">
+            <button class="game-card" onclick="selectGame('tictactoe')">
+                <div class="game-icon">
+                    <i class="fas fa-hashtag"></i>
+                </div>
+                <h2>Tic Tac Toe</h2>
+                <div class="game-stats" id="tictactoe-stats"></div>
+            </button>
+            <button class="game-card" onclick="selectGame('rps')">
+                <div class="game-icon">
+                    <i class="fas fa-hand-rock"></i>
+                </div>
+                <h2>Rock Paper Scissors</h2>
+                <div class="game-stats" id="rps-stats"></div>
+            </button>
+            <button class="game-card" onclick="selectGame('connect4')">
+                <div class="game-icon">
+                    <i class="fas fa-circle"></i>
+                </div>
+                <h2>Connect 4</h2>
+                <div class="game-stats" id="connect4-stats"></div>
+            </button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
