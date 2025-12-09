@@ -247,51 +247,49 @@
         </div>
     </div>
 
+    <script src="tictactoe-game.js"></script>
     <script>
+        const game = new TicTacToeGame();
         const cells = document.querySelectorAll('.cell');
         const status = document.getElementById('status');
-        const resetBtn = document.getElementById('reset');
-        const clearScoresBtn = document.getElementById('clear-scores');
-        const backBtn = document.getElementById('back');
         const modePvpBtn = document.getElementById('mode-pvp');
         const modeAiBtn = document.getElementById('mode-ai');
-        
-        let currentPlayer = 'X';
-        let board = ['', '', '', '', '', '', '', '', ''];
-        let gameActive = true;
-        let aiMode = false;
 
         // Load scores from localStorage
-        let scores = JSON.parse(localStorage.getItem('tictactoe_scores')) || {
+        const savedScores = JSON.parse(localStorage.getItem('tictactoe_scores')) || {
             playerX: 0,
             playerO: 0,
             draws: 0
         };
-
-        const winningConditions = [
-            [0, 1, 2],
-            [3, 4, 5],
-            [6, 7, 8],
-            [0, 3, 6],
-            [1, 4, 7],
-            [2, 5, 8],
-            [0, 4, 8],
-            [2, 4, 6]
-        ];
+        game.loadScores(savedScores);
 
         function updateScoreDisplay() {
+            const scores = game.getScores();
             document.getElementById('player-x-score').textContent = scores.playerX;
             document.getElementById('player-o-score').textContent = scores.playerO;
             document.getElementById('draws-score').textContent = scores.draws;
         }
 
         function saveScores() {
+            const scores = game.getScores();
             localStorage.setItem('tictactoe_scores', JSON.stringify(scores));
         }
 
-        function setMode(isAiMode) {
-            aiMode = isAiMode;
+        function updateStatus() {
+            const currentPlayer = game.getCurrentPlayer();
+            const aiMode = game.isAiMode();
+            
             if (aiMode) {
+                status.textContent = currentPlayer === 'X' ? 'Your Turn' : 'AI is thinking...';
+            } else {
+                status.textContent = `Player ${currentPlayer}'s Turn`;
+            }
+        }
+
+        function setMode(isAiMode) {
+            game.setAiMode(isAiMode);
+            
+            if (isAiMode) {
                 modePvpBtn.classList.remove('active');
                 modeAiBtn.classList.add('active');
                 document.getElementById('player-o-label').textContent = 'AI';
@@ -300,165 +298,68 @@
                 modePvpBtn.classList.add('active');
                 document.getElementById('player-o-label').textContent = 'Player O';
             }
+            
             resetGame();
         }
 
-        // AI Logic - Intelligent move selection
-        function getAiMove() {
-            // 1. Try to win
-            for (let i = 0; i < 9; i++) {
-                if (board[i] === '') {
-                    board[i] = 'O';
-                    if (checkWinForPlayer('O')) {
-                        board[i] = '';
-                        return i;
-                    }
-                    board[i] = '';
-                }
-            }
-
-            // 2. Block player from winning
-            for (let i = 0; i < 9; i++) {
-                if (board[i] === '') {
-                    board[i] = 'X';
-                    if (checkWinForPlayer('X')) {
-                        board[i] = '';
-                        return i;
-                    }
-                    board[i] = '';
-                }
-            }
-
-            // 3. Take center if available
-            if (board[4] === '') {
-                return 4;
-            }
-
-            // 4. Take a corner
-            const corners = [0, 2, 6, 8];
-            const availableCorners = corners.filter(i => board[i] === '');
-            if (availableCorners.length > 0) {
-                return availableCorners[Math.floor(Math.random() * availableCorners.length)];
-            }
-
-            // 5. Take any available space
-            const availableSpaces = [];
-            for (let i = 0; i < 9; i++) {
-                if (board[i] === '') {
-                    availableSpaces.push(i);
-                }
-            }
-            return availableSpaces[Math.floor(Math.random() * availableSpaces.length)];
-        }
-
-        function checkWinForPlayer(player) {
-            for (let condition of winningConditions) {
-                const [a, b, c] = condition;
-                if (board[a] === player && board[b] === player && board[c] === player) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
         function makeAiMove() {
-            if (!gameActive || currentPlayer !== 'O' || !aiMode) return;
+            if (!game.isGameActive() || game.getCurrentPlayer() !== 'O' || !game.isAiMode()) return;
 
-            // Add slight delay to make AI feel more natural
             setTimeout(() => {
-                const move = getAiMove();
-                if (move !== undefined) {
-                    const cell = document.querySelector(`[data-index="${move}"]`);
-                    board[move] = 'O';
+                const result = game.makeAiMove();
+                if (result.success) {
+                    const cell = document.querySelector(`[data-index="${result.move}"]`);
                     cell.textContent = 'O';
                     cell.classList.add('taken', 'o');
-                    checkResult();
+                    
+                    handleGameResult(result);
                 }
             }, 500);
         }
 
-        function handleCellClick(e) {
-            const cell = e.target;
-            const index = cell.dataset.index;
-
-            if (board[index] !== '' || !gameActive) {
-                return;
-            }
-
-            // In AI mode, only allow player X moves
-            if (aiMode && currentPlayer === 'O') {
-                return;
-            }
-
-            board[index] = currentPlayer;
-            cell.textContent = currentPlayer;
-            cell.classList.add('taken', currentPlayer.toLowerCase());
-
-            checkResult();
-
-            // Trigger AI move if it's AI's turn
-            if (aiMode && gameActive && currentPlayer === 'O') {
-                makeAiMove();
+        function handleGameResult(result) {
+            if (result.gameOver) {
+                const aiMode = game.isAiMode();
+                
+                if (result.winner) {
+                    if (aiMode) {
+                        status.textContent = result.winner === 'X' ? 'You Win! 🎉' : 'AI Wins! 🤖';
+                    } else {
+                        status.textContent = `Player ${result.winner} Wins!`;
+                    }
+                } else if (result.draw) {
+                    status.textContent = "It's a Draw!";
+                }
+                
+                saveScores();
+                updateScoreDisplay();
+            } else {
+                updateStatus();
             }
         }
 
-        function checkResult() {
-            let roundWon = false;
+        function handleCellClick(e) {
+            const cell = e.target;
+            const index = parseInt(cell.dataset.index);
 
-            for (let condition of winningConditions) {
-                const [a, b, c] = condition;
-                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-                    roundWon = true;
-                    break;
-                }
-            }
-
-            if (roundWon) {
-                if (aiMode) {
-                    status.textContent = currentPlayer === 'X' ? 'You Win! 🎉' : 'AI Wins! 🤖';
-                } else {
-                    status.textContent = `Player ${currentPlayer} Wins!`;
-                }
-                gameActive = false;
+            const result = game.makeMove(index);
+            
+            if (result.success) {
+                cell.textContent = game.getBoard()[index];
+                cell.classList.add('taken', game.getBoard()[index].toLowerCase());
                 
-                // Update scores
-                if (currentPlayer === 'X') {
-                    scores.playerX++;
-                } else {
-                    scores.playerO++;
+                handleGameResult(result);
+                
+                // Trigger AI move if it's AI's turn
+                if (game.isAiMode() && game.isGameActive() && game.getCurrentPlayer() === 'O') {
+                    makeAiMove();
                 }
-                saveScores();
-                updateScoreDisplay();
-                return;
-            }
-
-            if (!board.includes('')) {
-                status.textContent = "It's a Draw!";
-                gameActive = false;
-                scores.draws++;
-                saveScores();
-                updateScoreDisplay();
-                return;
-            }
-
-            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-            if (aiMode) {
-                status.textContent = currentPlayer === 'X' ? 'Your Turn' : 'AI is thinking...';
-            } else {
-                status.textContent = `Player ${currentPlayer}'s Turn`;
             }
         }
 
         function resetGame() {
-            board = ['', '', '', '', '', '', '', '', ''];
-            currentPlayer = 'X';
-            gameActive = true;
-            
-            if (aiMode) {
-                status.textContent = 'Your Turn';
-            } else {
-                status.textContent = `Player ${currentPlayer}'s Turn`;
-            }
+            game.resetGame();
+            updateStatus();
             
             cells.forEach(cell => {
                 cell.textContent = '';
@@ -467,20 +368,21 @@
         }
 
         function clearScores() {
-            scores = { playerX: 0, playerO: 0, draws: 0 };
+            game.resetScores();
             saveScores();
             updateScoreDisplay();
         }
 
         cells.forEach(cell => cell.addEventListener('click', handleCellClick));
-        resetBtn.addEventListener('click', resetGame);
-        clearScoresBtn.addEventListener('click', clearScores);
-        backBtn.addEventListener('click', () => window.location.href = 'index.html');
+        document.getElementById('reset').addEventListener('click', resetGame);
+        document.getElementById('clear-scores').addEventListener('click', clearScores);
+        document.getElementById('back').addEventListener('click', () => window.location.href = 'index.html');
         modePvpBtn.addEventListener('click', () => setMode(false));
         modeAiBtn.addEventListener('click', () => setMode(true));
 
-        // Initialize score display
+        // Initialize
         updateScoreDisplay();
+        updateStatus();
     </script>
 </body>
 </html>

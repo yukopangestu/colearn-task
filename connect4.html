@@ -249,39 +249,49 @@
         </div>
     </div>
 
+    <script src="connect4-game.js"></script>
     <script>
-        const ROWS = 6;
-        const COLS = 7;
-        let currentPlayer = 'red';
-        let board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
-        let gameActive = true;
-        let aiMode = false;
-
-        // Load scores from localStorage
-        let scores = JSON.parse(localStorage.getItem('connect4_scores')) || {
-            red: 0,
-            yellow: 0,
-            draws: 0
-        };
-
+        const game = new Connect4Game();
         const boardElement = document.getElementById('board');
         const status = document.getElementById('status');
         const modePvpBtn = document.getElementById('mode-pvp');
         const modeAiBtn = document.getElementById('mode-ai');
 
+        // Load scores from localStorage
+        const savedScores = JSON.parse(localStorage.getItem('connect4_scores')) || {
+            red: 0,
+            yellow: 0,
+            draws: 0
+        };
+        game.loadScores(savedScores);
+
         function updateScoreDisplay() {
+            const scores = game.getScores();
             document.getElementById('red-score').textContent = scores.red;
             document.getElementById('yellow-score').textContent = scores.yellow;
             document.getElementById('draws-score').textContent = scores.draws;
         }
 
         function saveScores() {
+            const scores = game.getScores();
             localStorage.setItem('connect4_scores', JSON.stringify(scores));
         }
 
-        function setMode(isAiMode) {
-            aiMode = isAiMode;
+        function updateStatus() {
+            const currentPlayer = game.getCurrentPlayer();
+            const aiMode = game.isAiMode();
+            
             if (aiMode) {
+                status.textContent = currentPlayer === 'red' ? 'Your Turn' : 'AI is thinking...';
+            } else {
+                status.textContent = `${currentPlayer === 'red' ? 'Red' : 'Yellow'} Player's Turn`;
+            }
+        }
+
+        function setMode(isAiMode) {
+            game.setAiMode(isAiMode);
+            
+            if (isAiMode) {
                 modePvpBtn.classList.remove('active');
                 modeAiBtn.classList.add('active');
                 document.getElementById('yellow-label').textContent = 'AI';
@@ -290,20 +300,29 @@
                 modePvpBtn.classList.add('active');
                 document.getElementById('yellow-label').textContent = 'Yellow Player';
             }
+            
             resetGame();
         }
 
         function createBoard() {
             boardElement.innerHTML = '';
-            for (let row = 0; row < ROWS; row++) {
+            const board = game.getBoard();
+            
+            for (let row = 0; row < game.ROWS; row++) {
                 const rowDiv = document.createElement('div');
                 rowDiv.className = 'row';
                 
-                for (let col = 0; col < COLS; col++) {
+                for (let col = 0; col < game.COLS; col++) {
                     const cell = document.createElement('div');
                     cell.className = 'cell';
                     cell.dataset.row = row;
                     cell.dataset.col = col;
+                    
+                    // Add existing piece if any
+                    if (board[row][col]) {
+                        cell.classList.add(board[row][col]);
+                    }
+                    
                     cell.addEventListener('click', () => handleCellClick(col));
                     rowDiv.appendChild(cell);
                 }
@@ -312,258 +331,67 @@
             }
         }
 
-        // AI Logic - Intelligent move selection
-        function getLowestEmptyRow(col) {
-            for (let r = ROWS - 1; r >= 0; r--) {
-                if (board[r][col] === null) {
-                    return r;
-                }
-            }
-            return -1;
-        }
-
-        function scorePosition(player) {
-            let score = 0;
-
-            // Score center column (most valuable)
-            const centerCol = Math.floor(COLS / 2);
-            let centerCount = 0;
-            for (let r = 0; r < ROWS; r++) {
-                if (board[r][centerCol] === player) centerCount++;
-            }
-            score += centerCount * 3;
-
-            // Score horizontal
-            for (let r = 0; r < ROWS; r++) {
-                for (let c = 0; c < COLS - 3; c++) {
-                    const window = [board[r][c], board[r][c+1], board[r][c+2], board[r][c+3]];
-                    score += evaluateWindow(window, player);
-                }
-            }
-
-            // Score vertical
-            for (let c = 0; c < COLS; c++) {
-                for (let r = 0; r < ROWS - 3; r++) {
-                    const window = [board[r][c], board[r+1][c], board[r+2][c], board[r+3][c]];
-                    score += evaluateWindow(window, player);
-                }
-            }
-
-            // Score diagonal (positive slope)
-            for (let r = 0; r < ROWS - 3; r++) {
-                for (let c = 0; c < COLS - 3; c++) {
-                    const window = [board[r][c], board[r+1][c+1], board[r+2][c+2], board[r+3][c+3]];
-                    score += evaluateWindow(window, player);
-                }
-            }
-
-            // Score diagonal (negative slope)
-            for (let r = 3; r < ROWS; r++) {
-                for (let c = 0; c < COLS - 3; c++) {
-                    const window = [board[r][c], board[r-1][c+1], board[r-2][c+2], board[r-3][c+3]];
-                    score += evaluateWindow(window, player);
-                }
-            }
-
-            return score;
-        }
-
-        function evaluateWindow(window, player) {
-            let score = 0;
-            const opponent = player === 'yellow' ? 'red' : 'yellow';
-
-            const playerCount = window.filter(x => x === player).length;
-            const emptyCount = window.filter(x => x === null).length;
-            const opponentCount = window.filter(x => x === opponent).length;
-
-            if (playerCount === 4) {
-                score += 100;
-            } else if (playerCount === 3 && emptyCount === 1) {
-                score += 5;
-            } else if (playerCount === 2 && emptyCount === 2) {
-                score += 2;
-            }
-
-            if (opponentCount === 3 && emptyCount === 1) {
-                score -= 4;
-            }
-
-            return score;
-        }
-
-        function getAiMove() {
-            // Check if AI can win
-            for (let col = 0; col < COLS; col++) {
-                const row = getLowestEmptyRow(col);
-                if (row !== -1) {
-                    board[row][col] = 'yellow';
-                    if (checkWin(row, col)) {
-                        board[row][col] = null;
-                        return col;
-                    }
-                    board[row][col] = null;
-                }
-            }
-
-            // Check if need to block player
-            for (let col = 0; col < COLS; col++) {
-                const row = getLowestEmptyRow(col);
-                if (row !== -1) {
-                    board[row][col] = 'red';
-                    if (checkWin(row, col)) {
-                        board[row][col] = null;
-                        return col;
-                    }
-                    board[row][col] = null;
-                }
-            }
-
-            // Score all valid moves
-            let validCols = [];
-            for (let col = 0; col < COLS; col++) {
-                if (getLowestEmptyRow(col) !== -1) {
-                    validCols.push(col);
-                }
-            }
-
-            // Evaluate each valid move
-            let bestScore = -Infinity;
-            let bestCol = validCols[Math.floor(Math.random() * validCols.length)];
-
-            for (let col of validCols) {
-                const row = getLowestEmptyRow(col);
-                board[row][col] = 'yellow';
-                const score = scorePosition('yellow');
-                board[row][col] = null;
-
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestCol = col;
-                }
-            }
-
-            return bestCol;
-        }
-
         function makeAiMove() {
-            if (!gameActive || currentPlayer !== 'yellow' || !aiMode) return;
+            if (!game.isGameActive() || game.getCurrentPlayer() !== 'yellow' || !game.isAiMode()) return;
 
             setTimeout(() => {
-                const col = getAiMove();
-                if (col !== undefined) {
-                    placePiece(col);
+                const result = game.makeAiMove();
+                if (result.success) {
+                    const cell = document.querySelector(`[data-row="${result.row}"][data-col="${result.col}"]`);
+                    cell.classList.add('yellow');
+                    
+                    handleGameResult(result);
                 }
             }, 600);
         }
 
-        function placePiece(col) {
-            const row = getLowestEmptyRow(col);
-            if (row === -1) return false;
-
-            board[row][col] = currentPlayer;
-            const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-            cell.classList.add(currentPlayer);
-
-            // Check for win
-            if (checkWin(row, col)) {
-                if (aiMode) {
-                    status.textContent = currentPlayer === 'red' ? 'You Win! 🎉' : 'AI Wins! 🤖';
-                } else {
-                    status.textContent = `${currentPlayer === 'red' ? 'Red' : 'Yellow'} Player Wins! 🎉`;
-                }
-                gameActive = false;
+        function handleGameResult(result) {
+            if (result.gameOver) {
+                const aiMode = game.isAiMode();
                 
-                scores[currentPlayer]++;
+                if (result.winner) {
+                    if (aiMode) {
+                        status.textContent = result.winner === 'red' ? 'You Win! 🎉' : 'AI Wins! 🤖';
+                    } else {
+                        status.textContent = `${result.winner === 'red' ? 'Red' : 'Yellow'} Player Wins! 🎉`;
+                    }
+                } else if (result.draw) {
+                    status.textContent = "It's a Draw! 🤝";
+                }
+                
                 saveScores();
                 updateScoreDisplay();
-                return true;
-            }
-
-            // Check for draw
-            if (board.every(row => row.every(cell => cell !== null))) {
-                status.textContent = "It's a Draw! 🤝";
-                gameActive = false;
-                scores.draws++;
-                saveScores();
-                updateScoreDisplay();
-                return true;
-            }
-
-            // Switch player
-            currentPlayer = currentPlayer === 'red' ? 'yellow' : 'red';
-            if (aiMode) {
-                status.textContent = currentPlayer === 'red' ? 'Your Turn' : 'AI is thinking...';
             } else {
-                status.textContent = `${currentPlayer === 'red' ? 'Red' : 'Yellow'} Player's Turn`;
+                updateStatus();
             }
-
-            return true;
         }
 
         function handleCellClick(col) {
-            if (!gameActive) return;
+            if (!game.isGameActive()) return;
 
-            // In AI mode, only allow red player moves
-            if (aiMode && currentPlayer === 'yellow') return;
-
-            if (placePiece(col)) {
+            const result = game.placePiece(col);
+            
+            if (result.success) {
+                const cell = document.querySelector(`[data-row="${result.row}"][data-col="${result.col}"]`);
+                cell.classList.add(game.getBoard()[result.row][result.col]);
+                
+                handleGameResult(result);
+                
                 // Trigger AI move if it's AI's turn
-                if (aiMode && gameActive && currentPlayer === 'yellow') {
+                if (game.isAiMode() && game.isGameActive() && game.getCurrentPlayer() === 'yellow') {
                     makeAiMove();
                 }
             }
         }
 
-        function checkWin(row, col) {
-            return (
-                checkDirection(row, col, 0, 1) ||  // Horizontal
-                checkDirection(row, col, 1, 0) ||  // Vertical
-                checkDirection(row, col, 1, 1) ||  // Diagonal /
-                checkDirection(row, col, 1, -1)    // Diagonal \
-            );
-        }
-
-        function checkDirection(row, col, deltaRow, deltaCol) {
-            let count = 1;
-            const color = board[row][col];
-
-            // Check positive direction
-            let r = row + deltaRow;
-            let c = col + deltaCol;
-            while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === color) {
-                count++;
-                r += deltaRow;
-                c += deltaCol;
-            }
-
-            // Check negative direction
-            r = row - deltaRow;
-            c = col - deltaCol;
-            while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === color) {
-                count++;
-                r -= deltaRow;
-                c -= deltaCol;
-            }
-
-            return count >= 4;
-        }
-
         function resetGame() {
-            board = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
-            currentPlayer = 'red';
-            gameActive = true;
-            
-            if (aiMode) {
-                status.textContent = 'Your Turn';
-            } else {
-                status.textContent = 'Red Player\'s Turn';
-            }
-            
+            game.resetGame();
+            updateStatus();
             createBoard();
         }
 
         function clearScores() {
-            scores = { red: 0, yellow: 0, draws: 0 };
+            game.resetScores();
             saveScores();
             updateScoreDisplay();
         }

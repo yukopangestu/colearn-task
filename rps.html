@@ -176,6 +176,10 @@
                 <div class="score-value" id="player-score">0</div>
             </div>
             <div class="score">
+                <h3>Draws</h3>
+                <div class="score-value" id="draw-score">0</div>
+            </div>
+            <div class="score">
                 <h3>Computer</h3>
                 <div class="score-value" id="computer-score">0</div>
             </div>
@@ -201,69 +205,43 @@
         </div>
     </div>
 
+    <script src="rps-game.js"></script>
     <script>
+        // Initialize game instance
+        const game = new RPSGame();
+
         // Load scores from localStorage
-        let scores = JSON.parse(localStorage.getItem('rps_scores')) || {
+        const savedScores = JSON.parse(localStorage.getItem('rps_scores')) || {
             player: 0,
-            computer: 0
+            computer: 0,
+            draw: 0
         };
-
-        let playerScore = scores.player;
-        let computerScore = scores.computer;
-
-        const choices = {
-            rock: '✊',
-            paper: '✋',
-            scissors: '✌️'
-        };
+        game.loadScores(savedScores);
 
         function saveScores() {
-            scores.player = playerScore;
-            scores.computer = computerScore;
+            const scores = game.getScores();
             localStorage.setItem('rps_scores', JSON.stringify(scores));
         }
 
         function updateScoreDisplay() {
-            document.getElementById('player-score').textContent = playerScore;
-            document.getElementById('computer-score').textContent = computerScore;
-        }
-
-        function getComputerChoice() {
-            const options = ['rock', 'paper', 'scissors'];
-            return options[Math.floor(Math.random() * 3)];
-        }
-
-        function determineWinner(player, computer) {
-            if (player === computer) {
-                return 'draw';
-            }
-
-            if (
-                (player === 'rock' && computer === 'scissors') ||
-                (player === 'paper' && computer === 'rock') ||
-                (player === 'scissors' && computer === 'paper')
-            ) {
-                return 'player';
-            }
-
-            return 'computer';
+            const scores = game.getScores();
+            document.getElementById('player-score').textContent = scores.player;
+            document.getElementById('computer-score').textContent = scores.computer;
+            document.getElementById('draw-score').textContent = scores.draw;
         }
 
         function play(playerChoice) {
-            const computerChoice = getComputerChoice();
-            const winner = determineWinner(playerChoice, computerChoice);
+            const result = game.playRound(playerChoice);
 
-            document.getElementById('player-choice').textContent = choices[playerChoice];
-            document.getElementById('computer-choice').textContent = choices[computerChoice];
+            document.getElementById('player-choice').textContent = game.getChoiceEmoji(result.playerChoice);
+            document.getElementById('computer-choice').textContent = game.getChoiceEmoji(result.computerChoice);
 
             const resultDiv = document.getElementById('result');
             
-            if (winner === 'player') {
-                playerScore++;
+            if (result.winner === 'player') {
                 resultDiv.textContent = 'You Win! 🎉';
                 resultDiv.style.color = '#4CAF50';
-            } else if (winner === 'computer') {
-                computerScore++;
+            } else if (result.winner === 'computer') {
                 resultDiv.textContent = 'Computer Wins! 😢';
                 resultDiv.style.color = '#f44336';
             } else {
@@ -276,8 +254,7 @@
         }
 
         function resetGame() {
-            playerScore = 0;
-            computerScore = 0;
+            game.resetScores();
             updateScoreDisplay();
             saveScores();
             document.getElementById('result').textContent = 'Make your choice!';
